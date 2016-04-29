@@ -1,0 +1,147 @@
+<?php
+/**
+  * wechat php test
+  */
+
+//define your token
+header("Content-type: text/html; charset=utf-8"); 
+$contentStr = iconv('GBK','UTF8',$contentStr);
+define("TOKEN", "weixin");
+$wechatObj = new wechatCallbackapiTest();
+if($_GET["echostr"]){   //判断是否接入微信
+    $wechatObj->valid();
+}else{
+      $wechatObj->responseMsg();
+}
+
+
+class wechatCallbackapiTest
+{
+	public function valid()
+    {
+        $echoStr = $_GET["echostr"];
+
+        //valid signature , option
+        if($this->checkSignature()){
+        	echo $echoStr;
+        	exit;
+        }
+    }
+
+    public function responseMsg()
+    {
+		//get post data, May be due to the different environments
+		$postStr = $GLOBALS["HTTP_RAW_POST_DATA"];
+
+      	//extract post data
+		if (!empty($postStr)){
+                /* libxml_disable_entity_loader is to prevent XML eXternal Entity Injection,
+                   the best way is to check the validity of xml by yourself */
+                libxml_disable_entity_loader(true);
+              	$postObj = simplexml_load_string($postStr, 'SimpleXMLElement', LIBXML_NOCDATA);
+                $fromUsername = $postObj->FromUserName;
+                $toUsername = $postObj->ToUserName;
+                $keyword = trim($postObj->Content);
+                $Event = trim($postObj->Event);
+                $MsgType = trim($postObj->MsgType);
+                $time = time();
+                $textTpl = "<xml>
+							<ToUserName><![CDATA[%s]]></ToUserName>
+							<FromUserName><![CDATA[%s]]></FromUserName>
+							<CreateTime>%s</CreateTime>
+							<MsgType><![CDATA[%s]]></MsgType>
+							<Content><![CDATA[%s]]></Content>
+							<FuncFlag>0</FuncFlag>
+							</xml>";        
+
+                $text_Tpl =  //接收图文
+                "<xml>
+                <ToUserName><![CDATA[%s]]></ToUserName>
+                <FromUserName><![CDATA[%s]]></FromUserName>
+                <CreateTime>%s</CreateTime>
+                <MsgType><![CDATA[news]]></MsgType>
+                <ArticleCount>1</ArticleCount>
+                <Articles>
+                <item>
+                <Title><![CDATA[%s]]></Title> 
+                <Description><![CDATA[%s]]></Description>
+                <PicUrl><![CDATA[%s]]></PicUrl>
+                <Url><![CDATA[%s]]></Url>
+                </item>
+                </Articles>
+                </xml>";
+
+
+//关注公众号 回复图文
+                  if ($Event=="subscribe") {
+                    $msgType = "text";
+                    $Title = "这是我的标题";
+                    $Description = "这是我的第一个图文回复";
+                    $picurl = 'https://ss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/logo/bd_logo1_31bdc765.png';
+                    $url = 'http://www.baidu.com';   //地址必须为单引号
+                 //   $contentStr = "Welcome  guanzhu zcx!";
+                    $resultStr = sprintf($text_Tpl, $fromUsername, $toUsername, $time, $Title, $Description, $picurl, $url);
+                    echo $resultStr;
+                                 }   
+
+//接收图片回复信息
+                if ($MsgType == "image") {
+                     $msgType = "text";
+                    $contentStr = "您发送了一个图片！";
+                    $resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time, $msgType, $contentStr);
+                    echo $resultStr;
+                }
+
+
+	if(!empty( $keyword ))
+                {
+                    if ($keyword == "你好") {
+                       $msgType = "text";
+                    $contentStr = "您好！";
+                    $resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time, $msgType, $contentStr);
+                    echo $resultStr;
+                    }
+
+
+
+              		$msgType = "text";
+                	$contentStr = "Welcome to wechat world!";
+                    $resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time, $msgType, $contentStr);
+                	echo $resultStr;
+                }else{
+                	echo "Input something...";
+                }
+
+        }else {
+        	echo "";
+        	exit;
+        }
+    }
+		
+	private function checkSignature()
+	{
+        // you must define TOKEN by yourself
+        if (!defined("TOKEN")) {
+            throw new Exception('TOKEN is not defined!');
+        }
+        
+        $signature = $_GET["signature"];
+        $timestamp = $_GET["timestamp"];
+        $nonce = $_GET["nonce"];
+        		
+		$token = TOKEN;
+		$tmpArr = array($token, $timestamp, $nonce);
+        // use SORT_STRING rule
+		sort($tmpArr, SORT_STRING);
+		$tmpStr = implode( $tmpArr );
+		$tmpStr = sha1( $tmpStr );
+		
+		if( $tmpStr == $signature ){
+			return true;
+		}else{
+			return false;
+		}
+	}
+}
+
+?>
